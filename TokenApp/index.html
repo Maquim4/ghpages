@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>a.konakhau</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <script src="node_modules/web3/dist/web3.min.js"></script>
+    <style>
+      .label-pair {
+        display: inline-block;
+        margin-right: 20px;
+      }
+      #status {
+        position: absolute;
+        top: 0;
+        right: 0;
+        padding: 5px 10px;
+        background-color: #f0f0f0;
+      }
+    </style>
+  </head>
+
+  <body>
+    <span id="status">Loading...</span>
+    <div class="label-pair">
+      <label for="tkName">Name:</label>
+      <p id="tkName">...</p>
+    </div>
+
+    <div class="label-pair">
+      <label for="tkSymbol">Symbol:</label>
+      <p id="tkSymbol">...</p>
+    </div>
+
+    <div class="label-pair">
+      <label for="tkTotalSupply">Total Supply:</label>
+      <p id="tkTotalSupply">...</p>
+    </div>
+
+    <div class="label-pair">
+      <label for="usersAmount">Amount of users:</label>
+      <p id="usersAmount">...</p>
+    </div>
+
+    <div class="label-pair">
+      <label for="usersTks">Users have (A tokens):</label>
+      <p id="usersTks">...</p>
+    </div>
+
+    <h2>Check Balance</h2>
+    <label for="checkAddress">Address to Check:</label>
+    <input type="text" id="checkAddress" placeholder="User's address" />
+    <br />
+    <button onclick="checkBalance()">Check Balance</button>
+    <p id="checkedBalance">Balance: <span id="userBalance">0</span> tokens</p>
+
+    <h2>Transfer Tokens</h2>
+    <label for="recipientAddress">Recipient's Address:</label>
+    <input
+      type="text"
+      id="recipientAddress"
+      placeholder="Recipient's Ethereum address"
+    />
+    <br />
+    <label for="tokenAmount">Token Amount:</label>
+    <input type="number" id="tokenAmount" placeholder="Amount" />
+    <br />
+    <button onclick="transferTokens()">Transfer Tokens</button>
+
+    <h2>Get Free Tokens</h2>
+    <button onclick="getFreeTokens()">Get Free Tokens</button>
+
+    <script type="text/javascript">
+      async function loadWeb3() {
+        if (window.ethereum) {
+          window.web3 = new Web3(window.ethereum);
+        }
+      }
+
+      async function loadContract() {
+        return await new window.web3.eth.Contract(
+          [
+            {
+              inputs: [
+                {
+                  internalType: 'uint256',
+                  name: 'total',
+                  type: 'uint256',
+                },
+              ],
+              stateMutability: 'nonpayable',
+              type: 'constructor',
+            },
+            {
+              anonymous: false,
+              inputs: [
+                {
+                  indexed: true,
+                  internalType: 'address',
+                  name: 'tokenOwner',
+                  type: 'address',
+                },
+                {
+                  indexed: true,
+                  internalType: 'address',
+                  name: 'spender',
+                  type: 'address',
+                },
+                {
+                  indexed: false,
+                  internalType: 'uint256',
+                  name: 'tokens',
+                  type: 'uint256',
+                },
+              ],
+              name: 'Approval',
+              type: 'event',
+            },
+            {
+              inputs: [
+                {
+                  internalType: 'address',
+                  name: 'delegate',
+                  type: 'address',
+                },
+                {
+                  internalType: 'uint256',
+                  name: 'numTokens',
+                  type: 'uint256',
+                },
+              ],
+              name: 'approve',
+              outputs: [
+                {
+                  internalType: 'bool',
+                  name: '',
+                  type: 'bool',
+                },
+              ],
+              stateMutability: 'nonpayable',
+              type: 'function',
+            },
+            {
+              inputs: [],
+              name: 'getFreeTokens',
+              outputs: [
+                {
+                  internalType: 'bool',
+                  name: '',
+                  type: 'bool',
+                },
+              ],
+              stateMutability: 'nonpayable',
+              type: 'function',
+            },
+            {
+              inputs: [
+                {
+                  internalType: 'address',
+                  name: 'receiver',
+                  type: 'address',
+                },
+                {
+                  internalType: 'uint256',
+                  name: 'numTokens',
+                  type: 'uint256',
+                },
+              ],
+              name: 'transfer',
+              outputs: [
+                {
+                  internalType: 'bool',
+                  name: '',
+                  type: 'bool',
+                },
+              ],
+              stateMutability: 'nonpayable',
+              type: 'function',
+            },
+            {
+              anonymous: false,
+              inputs: [
+                {
+                  indexed: true,
+                  internalType: 'address',
+                  name: 'from',
+                  type: 'address',
+                },
+                {
+                  indexed: true,
+                  internalType: 'address',
+                  name: 'to',
+                  type: 'address',
+                },
+                {
+                  indexed: false,
+                  internalType: 'uint256',
+                  name: 'tokens',
+                  type: 'uint256',
+                },
+              ],
+              name: 'Transfer',
+              type: 'event',
+            },
+            {
+              inputs: [
+                {
+                  internalType: 'address',
+                  name: 'buyer',
+                  type: 'address',
+                },
+                {
+                  internalType: 'uint256',
+                  name: 'numTokens',
+                  type: 'uint256',
+                },
+              ],
+              name: 'transferFromCeo',
+              outputs: [
+                {
+                  internalType: 'bool',
+                  name: '',
+                  type: 'bool',
+                },
+              ],
+              stateMutability: 'nonpayable',
+              type: 'function',
+            },
+            {
+              inputs: [
+                {
+                  internalType: 'address',
+                  name: 'tokenOwner',
+                  type: 'address',
+                },
+              ],
+              name: 'balanceOf',
+              outputs: [
+                {
+                  internalType: 'uint256',
+                  name: '',
+                  type: 'uint256',
+                },
+              ],
+              stateMutability: 'view',
+              type: 'function',
+            },
+            {
+              inputs: [
+                {
+                  internalType: 'address',
+                  name: '',
+                  type: 'address',
+                },
+              ],
+              name: 'balances',
+              outputs: [
+                {
+                  internalType: 'uint256',
+                  name: '',
+                  type: 'uint256',
+                },
+              ],
+              stateMutability: 'view',
+              type: 'function',
+            },
+            {
+              inputs: [],
+              name: 'ceo',
+              outputs: [
+                {
+                  internalType: 'address',
+                  name: '',
+                  type: 'address',
+                },
+              ],
+              stateMutability: 'view',
+              type: 'function',
+            },
+            {
+              inputs: [],
+              name: 'decimals',
+              outputs: [
+                {
+                  internalType: 'uint8',
+                  name: '',
+                  type: 'uint8',
+                },
+              ],
+              stateMutability: 'view',
+              type: 'function',
+            },
+            {
+              inputs: [],
+              name: 'getName',
+              outputs: [
+                {
+                  internalType: 'string',
+                  name: '',
+                  type: 'string',
+                },
+              ],
+              stateMutability: 'pure',
+              type: 'function',
+            },
+            {
+              inputs: [],
+              name: 'getSymbol',
+              outputs: [
+                {
+                  internalType: 'string',
+                  name: '',
+                  type: 'string',
+                },
+              ],
+              stateMutability: 'pure',
+              type: 'function',
+            },
+            {
+              inputs: [],
+              name: 'getUsers',
+              outputs: [
+                {
+                  internalType: 'uint256',
+                  name: '',
+                  type: 'uint256',
+                },
+              ],
+              stateMutability: 'view',
+              type: 'function',
+            },
+            {
+              inputs: [],
+              name: 'getUsersTokens',
+              outputs: [
+                {
+                  internalType: 'uint256',
+                  name: '',
+                  type: 'uint256',
+                },
+              ],
+              stateMutability: 'view',
+              type: 'function',
+            },
+            {
+              inputs: [],
+              name: 'initAmount',
+              outputs: [
+                {
+                  internalType: 'uint256',
+                  name: '',
+                  type: 'uint256',
+                },
+              ],
+              stateMutability: 'view',
+              type: 'function',
+            },
+            {
+              inputs: [],
+              name: 'name',
+              outputs: [
+                {
+                  internalType: 'string',
+                  name: '',
+                  type: 'string',
+                },
+              ],
+              stateMutability: 'view',
+              type: 'function',
+            },
+            {
+              inputs: [],
+              name: 'symbol',
+              outputs: [
+                {
+                  internalType: 'string',
+                  name: '',
+                  type: 'string',
+                },
+              ],
+              stateMutability: 'view',
+              type: 'function',
+            },
+            {
+              inputs: [],
+              name: 'totalSupply',
+              outputs: [
+                {
+                  internalType: 'uint256',
+                  name: '',
+                  type: 'uint256',
+                },
+              ],
+              stateMutability: 'view',
+              type: 'function',
+            },
+            {
+              inputs: [
+                {
+                  internalType: 'address',
+                  name: 'target',
+                  type: 'address',
+                },
+              ],
+              name: 'userExists',
+              outputs: [
+                {
+                  internalType: 'bool',
+                  name: '',
+                  type: 'bool',
+                },
+              ],
+              stateMutability: 'view',
+              type: 'function',
+            },
+            {
+              inputs: [
+                {
+                  internalType: 'uint256',
+                  name: '',
+                  type: 'uint256',
+                },
+              ],
+              name: 'users',
+              outputs: [
+                {
+                  internalType: 'address',
+                  name: '',
+                  type: 'address',
+                },
+              ],
+              stateMutability: 'view',
+              type: 'function',
+            },
+          ],
+          '0xC8FAF48c5d8be16d8012D3ced8e3Aeeb46410E83'
+        );
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        const tkName = document.getElementById('tkName');
+        const tkSymbol = document.getElementById('tkSymbol');
+        const tkTotalSupply = document.getElementById('tkTotalSupply');
+
+        async function fetchDataAndUpdate() {
+          updateStatus('fetching token name...');
+          const name = await window.contract.methods.getName().call();
+          updateElement('tkName', name);
+
+          updateStatus('fetching token symbol...');
+          const symbol = await window.contract.methods.getSymbol().call();
+          updateElement('tkSymbol', symbol);
+
+          updateStatus('fetching total supply...');
+          const ts = await window.contract.methods.totalSupply().call();
+          updateElement('tkTotalSupply', ts);
+
+          updateStatus('Updated.');
+        }
+        fetchUsersAndTokens();
+
+        window.onload = fetchDataAndUpdate;
+      });
+
+      async function fetchUsersAndTokens() {
+        updateStatus('fetching users and their tokens...');
+        const usersAmount = await window.contract.methods.getUsers().call();
+        updateElement('usersAmount', usersAmount);
+        const usersTks = await window.contract.methods.getUsersTokens().call();
+        updateElement('usersTks', usersTks);
+
+        updateStatus('Updated.');
+      }
+
+      async function checkBalance() {
+        updateStatus('fetching users balance...');
+        const addressToCheck = document.getElementById('checkAddress').value;
+        const balance = await window.contract.methods
+          .balanceOf(addressToCheck)
+          .call();
+        updateElement('userBalance', balance);
+
+        updateStatus('Done. ');
+      }
+
+      async function getFreeTokens() {
+        updateStatus('getting free tokens...');
+
+        const account = await getCurrentAccount();
+        const result = await window.contract.methods
+          .getFreeTokens()
+          .send({ from: account });
+        if (result.status) {
+          updateStatus('Tokens successfully received!');
+        } else {
+          updateStatus('You can get free tokens only once.');
+        }
+        fetchUsersAndTokens();
+      }
+      async function getCurrentAccount() {
+        const accounts = await window.web3.eth.getAccounts();
+        return accounts[0];
+      }
+
+      async function transferTokens() {
+        const account = await getCurrentAccount();
+
+        const recipientAddress =
+          document.getElementById('recipientAddress').value;
+        const tokenAmount = document.getElementById('tokenAmount').value;
+
+        try {
+          const result = await window.contract.methods
+            .transfer(recipientAddress, tokenAmount)
+            .send({ from: account });
+
+          if (result.status) {
+            updateStatus('Tokens successfully transferred!');
+          } else {
+            updateStatus('Error: Failed to transfer tokens.');
+          }
+        } catch (error) {
+          updateStatus(error.message);
+        }
+        fetchUsersAndTokens();
+      }
+
+      async function load() {
+        await loadWeb3();
+        window.contract = await loadContract();
+        updateStatus('Ready!');
+      }
+
+      function updateElement(el, content) {
+        const element = document.getElementById(`${el}`);
+        element.innerHTML = content;
+      }
+
+      function updateStatus(status) {
+        const statusEl = document.getElementById('status');
+        statusEl.innerHTML = 'Status: ' + status;
+        console.log(status);
+      }
+
+      load();
+    </script>
+  </body>
+</html>
